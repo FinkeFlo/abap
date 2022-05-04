@@ -1,0 +1,100 @@
+CLASS zcl_eml_vs_opensql DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_oo_adt_classrun .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+
+    DATA time_start TYPE timestampl.
+    DATA time_end TYPE timestampl.
+    DATA runtime TYPE timestampl.
+
+    DATA mt_travel_ids TYPE TABLE OF /dmo/travel_m-travel_id WITH DEFAULT KEY.
+    METHODS use_eml.
+    METHODS use_open_sql.
+
+
+ENDCLASS.
+
+
+
+CLASS zcl_eml_vs_opensql IMPLEMENTATION.
+
+
+  METHOD if_oo_adt_classrun~main.
+
+    SELECT travel_id
+    FROM /dmo/travel_m
+      INTO TABLE @mt_travel_ids
+      UP TO 2000 ROWS.
+    IF sy-subrc IS INITIAL.
+
+**********************************************************************
+* Settings
+      DATA(use_eml) = abap_true.
+**********************************************************************
+
+
+      GET TIME STAMP FIELD time_start.
+
+      IF use_eml EQ abap_true.
+        DATA(lv_mode) = |EML|.
+        use_eml(  ).
+      ELSE.
+        lv_mode = |openSQL|.
+        use_open_sql(  ).
+      ENDIF.
+
+      GET TIME STAMP FIELD time_end.
+      runtime = time_end - time_start.
+      out->write( data  = runtime name = |Runtime with { lv_mode }  | ).
+
+    ENDIF.
+
+
+  ENDMETHOD.
+
+  METHOD use_eml.
+
+    READ ENTITIES OF /DMO/I_Travel_M ENTITY travel
+    ALL FIELDS WITH VALUE #( FOR e IN mt_travel_ids ( travel_id = e ) )
+    RESULT DATA(lt_result).
+
+    LOOP AT lt_result REFERENCE INTO DATA(lr_travel).
+      READ ENTITIES OF /DMO/I_Travel_M ENTITY travel
+      BY \_Booking
+      ALL FIELDS WITH VALUE #( ( travel_id = lr_travel->travel_id  ) )
+      RESULT DATA(lt_bookings).
+
+
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+
+  METHOD use_open_sql.
+
+    DATA lt_travel_ids_open_sql TYPE RANGE OF /dmo/travel_m-travel_id.
+    lt_travel_ids_open_sql = VALUE #( FOR e IN mt_travel_ids ( option = 'EQ' sign = 'I' low = e ) ).
+
+    SELECT *
+    FROM /dmo/travel_m
+    WHERE travel_id IN @lt_travel_ids_open_sql
+    INTO TABLE @DATA(lt_travel).
+    LOOP AT lt_travel REFERENCE INTO DATA(lr_travel).
+      SELECT *
+      FROM /dmo/booking_m
+      WHERE travel_id EQ @lr_travel->travel_id
+      INTO TABLE @DATA(lt_bookings).
+
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+ENDCLASS.
