@@ -63,13 +63,11 @@ CLASS zcl_eml_vs_opensql IMPLEMENTATION.
     READ ENTITIES OF /DMO/I_Travel_M ENTITY travel
     ALL FIELDS WITH VALUE #( FOR e IN mt_travel_ids ( travel_id = e ) )
     RESULT DATA(lt_result).
-
     LOOP AT lt_result REFERENCE INTO DATA(lr_travel).
       READ ENTITIES OF /DMO/I_Travel_M ENTITY travel
       BY \_Booking
       ALL FIELDS WITH VALUE #( ( travel_id = lr_travel->travel_id  ) )
       RESULT DATA(lt_bookings).
-
 
     ENDLOOP.
 
